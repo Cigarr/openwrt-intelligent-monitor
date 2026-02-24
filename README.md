@@ -1,7 +1,19 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/OpenWrt-智能监控-v1.0-blue?style=for-the-badge&logo=openwrt&logoColor=white" alt="OpenWrt智能监控"/>
-  <img src="https://img.shields.io/badge/青龙面板-适配版-00C7B7?style=for-the-badge&logo=docker&logoColor=white" alt="青龙面板适配"/>
-  <img src="https://img.shields.io/badge/资源占用-CPU%E2%89%A45%25%20%7C%20内存%E2%89%A420MB-FF6B6B?style=for-the-badge" alt="资源占用"/>
+  <img src="https://cdn.jsdelivr.net/gh/Cigarr/openwrt-intelligent-monitor/logo.png" alt="OpenWrt 智能监控" width="200">
+</p>
+
+<h1 align="center">OpenWrt 智能监控（青龙面板专属）</h1>
+
+<p align="center">
+  <a href="https://github.com/Cigarr/openwrt-intelligent-monitor">
+    <img src="https://img.shields.io/badge/OpenWrt-智能监控-v1.0-blue?style=for-the-badge&logo=openwrt&logoColor=white" alt="OpenWrt 智能监控">
+  </a>
+  <a href="https://github.com/Cigarr/openwrt-intelligent-monitor">
+    <img src="https://img.shields.io/badge/青龙面板-适配版-00C7B7?style=for-the-badge&logo=docker&logoColor=white" alt="青龙面板适配版">
+  </a>
+  <a href="https://github.com/Cigarr/openwrt-intelligent-monitor">
+    <img src="https://img.shields.io/badge/资源占用-CPU≤5%25%20%7C%20内存≤20MB-FB6B6B?style=for-the-badge&logo=serverless&logoColor=white" alt="资源占用">
+  </a>
 </p>
 
 <div align="center">
