@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-OpenWrt 智能监控脚本
-功能：阶梯式检测、异常防抖、并行检测、企业微信汇总通知
-优化：低占用、抗延迟、不误报
+OpenWrt 智能监控脚本（配置分离版）
+配置文件：config.py（所有需要修改的参数都在这）
 """
-
 import requests
 import socket
 import time
@@ -13,36 +11,16 @@ import traceback
 import gc
 from concurrent.futures import ThreadPoolExecutor
 
-# ====================== 【用户配置区】======================
-CORP_ID = "wwxxxxxxxxxxxxxxx"
-CORP_SECRET = "xxxxxxxxxxxxxxxxxx"
-AGENT_ID = 1000002
-TO_USER = "@all"
+# 导入配置文件（核心修改：从config.py读取参数）
+import config
 
-# 检测域名（支持 NoIP）
-TEST_DOMAINS = [
-    "www.baidu.com",
-    "yourname.ddns.net",
-    "www.aliyun.com"
-]
+# ====================== 固定配置（无需修改）======================
+TIMEOUT_DOMAIN = 2.0                # 域名检测超时
+TIMEOUT_IP_PORT = 1.5               # IP端口检测超时
+MAX_WORKERS = 3                     # 并行线程数
+# ===============================================================
 
-# 检测内网 IP:端口
-TEST_IP_PORTS = [
-    "192.168.0.188:5003",
-    "192.168.0.1:80"
-]
-
-# 监控策略
-DURATION_RUN = 28800
-INTERVAL_NORMAL = 1800
-INTERVAL_ABNORMAL = 300
-DEBOUNCE_TIMES = 2
-
-TIMEOUT_DOMAIN = 2.0
-TIMEOUT_IP_PORT = 1.5
-MAX_WORKERS = 3
-# ==========================================================
-
+# 全局状态变量（无需修改）
 detect_history = {
     "total_times": 0,
     "abnormal_times": 0,
@@ -51,9 +29,8 @@ detect_history = {
     "last_abnormal_time": "",
     "consecutive_abnormal": 0
 }
-
 stop_flag = False
-current_interval = INTERVAL_NORMAL
+current_interval = config.INTERVAL_NORMAL  # 从配置读取
 last_detect_result = {"domain": {}, "ip_port": {}}
 
 def print_log(msg):
@@ -124,10 +101,11 @@ def detect_once():
     detect_history["total_times"] += 1
     print_log(f"===== 第 {detect_history['total_times']} 次检测 =====")
 
+    # 从配置读取检测目标（核心修改）
     domain_ok = True
     domain_errs = []
     with ThreadPoolExecutor(MAX_WORKERS) as executor:
-        results = list(executor.map(check_single_domain, TEST_DOMAINS))
+        results = list(executor.map(check_single_domain, config.TEST_DOMAINS))
     for ok, msg in results:
         print_log(msg)
         if not ok:
@@ -137,7 +115,7 @@ def detect_once():
     ip_port_ok = True
     ip_port_errs = []
     with ThreadPoolExecutor(MAX_WORKERS) as executor:
-        results = list(executor.map(check_single_ip_port, TEST_IP_PORTS))
+        results = list(executor.map(check_single_ip_port, config.TEST_IP_PORTS))
     for ok, msg in results:
         print_log(msg)
         if not ok:
@@ -147,29 +125,30 @@ def detect_once():
     if not domain_ok or not ip_port_ok:
         detect_history["consecutive_abnormal"] += 1
         print_log(f"⚠️ 连续异常：{detect_history['consecutive_abnormal']}")
-        if detect_history["consecutive_abnormal"] >= DEBOUNCE_TIMES:
+        if detect_history["consecutive_abnormal"] >= config.DEBOUNCE_TIMES:
             detect_history["abnormal_times"] += 1
             detect_history["last_abnormal_time"] = time.strftime('%Y-%m-%d %H:%M:%S')
             detect_history["domain_abnormal"].extend(domain_errs)
             detect_history["ip_port_abnormal"].extend(ip_port_errs)
-        current_interval = INTERVAL_ABNORMAL
+        current_interval = config.INTERVAL_ABNORMAL
     else:
         detect_history["consecutive_abnormal"] = 0
-        current_interval = INTERVAL_NORMAL
+        current_interval = config.INTERVAL_NORMAL
     gc.collect()
 
 def detect_loop():
     start_time = time.time()
     while not stop_flag:
         detect_once()
-        if time.time() - start_time >= DURATION_RUN:
+        if time.time() - start_time >= config.DURATION_RUN:
             break
         print_log(f"等待 {current_interval // 60} 分钟")
         time.sleep(current_interval)
 
 def get_qywx_token():
     try:
-        url = f"https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={CORP_ID}&corpsecret={CORP_SECRET}"
+        # 从配置读取企业微信参数（核心修改）
+        url = f"https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={config.CORP_ID}&corpsecret={config.CORP_SECRET}"
         resp = requests.get(url, timeout=10).json()
         return resp.get("access_token") if resp.get("errcode") == 0 else None
     except Exception:
@@ -186,7 +165,7 @@ def send_summary():
         return "\n".join(f"    • {x}" for x in list(set(items)))
 
     now = time.strftime('%Y-%m-%d %H:%M:%S')
-    start_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() - DURATION_RUN))
+    start_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() - config.DURATION_RUN))
 
     if detect_history["abnormal_times"] == 0:
         content = f"""
@@ -216,9 +195,9 @@ def send_summary():
     try:
         send_url = f"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={token}"
         data = {
-            "touser": TO_USER,
+            "touser": config.TO_USER,       # 从配置读取
             "msgtype": "text",
-            "agentid": AGENT_ID,
+            "agentid": config.AGENT_ID,     # 从配置读取
             "text": {"content": content}
         }
         requests.post(send_url, json=data, timeout=10)
@@ -228,10 +207,10 @@ def send_summary():
 
 def main():
     global stop_flag
-    print_log("🚀 OpenWrt 智能监控启动")
+    print_log("🚀 OpenWrt 智能监控启动（配置分离版）")
     t = threading.Thread(target=detect_loop, daemon=True)
     t.start()
-    time.sleep(DURATION_RUN)
+    time.sleep(config.DURATION_RUN)
     stop_flag = True
     t.join()
     send_summary()
