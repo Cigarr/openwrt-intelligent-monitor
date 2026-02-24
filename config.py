@@ -1,4 +1,4 @@
-# config.py - OpenWrt监控配置文件（青龙适配版）
+# config.py - OpenWrt监控配置文件（青龙适配最终版）
 # ======================================
 # 企业微信配置（必填，替换为你的信息）
 CORP_ID = "wwxxxxxxxxxxxxxxx"       # 你的企业ID
